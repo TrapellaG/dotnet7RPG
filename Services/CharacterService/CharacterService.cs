@@ -8,40 +8,40 @@ namespace dotNetRPG.Services.CharacterService
 {
     public class CharacterService : ICharacterService
     {
-        private static List<Character> characters = new List<Character>()
-        {
-            new Character(),
-            new Character { Id = 1, Name = "Sam" }
-        };
         private readonly IMapper _mapper;
+        private readonly DataContext _context;
 
-        public CharacterService(IMapper mapper)
+        public CharacterService(IMapper mapper, DataContext context)
         {
-            this._mapper = mapper;
+            _context = context;
+            _mapper = mapper;
         }
 
         public async Task<ServiceResponse<List<GetCharacterDto>>> AddCharacter(AddCharacterDto newCharacter)
         {
             var ServiceResponse = new ServiceResponse<List<GetCharacterDto>>();
             var character = _mapper.Map<Character>(newCharacter);
-            character.Id = characters.Max(character => character.Id) + 1;
-            characters.Add(character);
-            ServiceResponse.Data = characters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToList();
+
+            _context.Characters.Add(character);
+            await _context.SaveChangesAsync();
+
+            ServiceResponse.Data = await _context.Characters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToListAsync();
             return ServiceResponse;
         }
 
         public async Task<ServiceResponse<List<GetCharacterDto>>> GetAllCharacters()
         {
             var ServiceResponse = new ServiceResponse<List<GetCharacterDto>>();
-            ServiceResponse.Data = characters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToList();
+            var dbCharacters = await _context.Characters.ToListAsync();
+            ServiceResponse.Data = dbCharacters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToList();
             return ServiceResponse;
         }
 
         public async Task<ServiceResponse<GetCharacterDto>> GetCharacterById(int id)
         {
             var ServiceResponse = new ServiceResponse<GetCharacterDto>();
-            var character = characters.FirstOrDefault(character => character.Id == id);
-            ServiceResponse.Data = _mapper.Map<GetCharacterDto>(character);
+            var dbCharacters = await _context.Characters.FirstOrDefaultAsync(character => character.Id == id);
+            ServiceResponse.Data = _mapper.Map<GetCharacterDto>(dbCharacters);
             return ServiceResponse;
         }
 
@@ -51,7 +51,7 @@ namespace dotNetRPG.Services.CharacterService
 
             try
             {
-                var character = characters.FirstOrDefault(character => character.Id == updatedCharacter.Id);
+                var character = await _context.Characters.FirstOrDefaultAsync(character => character.Id == updatedCharacter.Id);
 
                 if (character is null)
                 {
@@ -68,6 +68,7 @@ namespace dotNetRPG.Services.CharacterService
                 character.Inteligence = updatedCharacter.Inteligence;
                 character.Class = updatedCharacter.Class;*/
 
+                await _context.SaveChangesAsync();
                 ServiceResponse.Data = _mapper.Map<GetCharacterDto>(character);
             }
             catch (Exception exception)
@@ -85,15 +86,18 @@ namespace dotNetRPG.Services.CharacterService
 
             try
             {
-                var character = characters.FirstOrDefault(character => character.Id == id);
+                var character = await _context.Characters.FirstOrDefaultAsync(character => character.Id == id);
 
                 if (character is null)
                 {
                     throw new Exception($"Character with Id '{id}' not found.");
                 }
 
-                characters.Remove(character);
-                ServiceResponse.Data = characters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToList();
+                _context.Characters.Remove(character);
+
+                await _context.SaveChangesAsync();
+                
+                ServiceResponse.Data = await _context.Characters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToListAsync();
             }
             catch (Exception exception)
             {
