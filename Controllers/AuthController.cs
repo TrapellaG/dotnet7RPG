@@ -1,0 +1,35 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using dotNetRPG.Dtos.User;
+using Microsoft.AspNetCore.Mvc;
+
+namespace dotNetRPG.Controllers
+{
+    [ApiController]
+    [Route("[controller]")]
+
+    public class AuthController : ControllerBase
+    {
+        public readonly IAuthRepository _authRepository;
+
+        public AuthController(IAuthRepository authRepository)
+        {
+            _authRepository = authRepository;
+        }
+
+        [HttpPost("Register")]
+        public async Task<ActionResult<ServiceResponse<int>>> Register(UserResgisterDto request)
+        {
+            var response = await _authRepository.Register(new User { Username = request.Username }, request.Password);
+
+            if (!response.Success)
+            {
+                return BadRequest(response);
+            }
+
+            return Ok(response);
+        }
+    }
+}
