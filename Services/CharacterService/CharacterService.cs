@@ -146,7 +146,7 @@ namespace dotNetRPG.Services.CharacterService
                     return response;
                 }
 
-                var skill = await _context.Skills.FirstOrDefaultAsync(skill => skill.Id == newCharacterSkill.SkillId);
+                var skill = await _context.Skills!.FirstOrDefaultAsync(skill => skill.Id == newCharacterSkill.SkillId);
 
                 if (skill is null)
                 {
