@@ -1,0 +1,2 @@
+add migration --> dotnet ef add skills
+update database --> dotnet ef database update
