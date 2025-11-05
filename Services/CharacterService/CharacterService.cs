@@ -41,7 +41,10 @@ namespace dotNetRPG.Services.CharacterService
         public async Task<ServiceResponse<List<GetCharacterDto>>> GetAllCharacters()
         {
             var ServiceResponse = new ServiceResponse<List<GetCharacterDto>>();
-            var dbCharacters = await _context.Characters.Where(character => character.User!.Id == GetUserId()).ToListAsync();
+            var dbCharacters = await _context.Characters
+                .Include(character => character.Weapon)
+                .Include(character => character.Skills)
+                .Where(character => character.User!.Id == GetUserId()).ToListAsync();
             ServiceResponse.Data = dbCharacters.Select(character => _mapper.Map<GetCharacterDto>(character)).ToList();
             return ServiceResponse;
         }
@@ -50,6 +53,8 @@ namespace dotNetRPG.Services.CharacterService
         {
             var ServiceResponse = new ServiceResponse<GetCharacterDto>();
             var dbCharacters = await _context.Characters
+                .Include(character => character.Weapon)
+                .Include(character => character.Skills)
                 .FirstOrDefaultAsync(character => character.Id == id && character.User!.Id == GetUserId());
             ServiceResponse.Data = _mapper.Map<GetCharacterDto>(dbCharacters);
             return ServiceResponse;
@@ -91,7 +96,7 @@ namespace dotNetRPG.Services.CharacterService
 
             return ServiceResponse;
         }
-        
+
         public async Task<ServiceResponse<List<GetCharacterDto>>> DeleteCharacter(int id)
         {
             var ServiceResponse = new ServiceResponse<List<GetCharacterDto>>();
@@ -109,7 +114,7 @@ namespace dotNetRPG.Services.CharacterService
                 _context.Characters.Remove(character);
 
                 await _context.SaveChangesAsync();
-                
+
                 ServiceResponse.Data = await _context.Characters
                     .Where(character => character.User!.Id == GetUserId())
                     .Select(character => _mapper.Map<GetCharacterDto>(character)).ToListAsync();
@@ -121,6 +126,46 @@ namespace dotNetRPG.Services.CharacterService
             }
 
             return ServiceResponse;
+        }
+
+        public async Task<ServiceResponse<GetCharacterDto>> AddCharacterSkill(AddCharacterSkillDto newCharacterSkill)
+        {
+            var response = new ServiceResponse<GetCharacterDto>();
+
+            try
+            {
+                var character = await _context.Characters
+                    .Include(character => character.Weapon)
+                    .Include(character => character.Skills)
+                    .FirstOrDefaultAsync(character => character.Id == newCharacterSkill.CharacterId && character.User!.Id == GetUserId());
+
+                if (character is null)
+                {
+                    response.Success = false;
+                    response.Message = "Character not found.";
+                    return response;
+                }
+
+                var skill = await _context.Skills.FirstOrDefaultAsync(skill => skill.Id == newCharacterSkill.SkillId);
+
+                if (skill is null)
+                {
+                    response.Success = false;
+                    response.Message = "Skill not found.";
+                    return response;
+                }
+
+                character.Skills!.Add(skill);
+                await _context.SaveChangesAsync();
+                response.Data = _mapper.Map<GetCharacterDto>(character);
+            }
+            catch (Exception exception)
+            {
+                response.Success = false;
+                response.Message = exception.Message;
+            }
+
+            return response;
         }
     }
 }
