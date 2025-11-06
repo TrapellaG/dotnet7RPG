@@ -40,12 +40,74 @@ namespace dotNetRPG.Services.FightService
                 {
                     opponent.HipPoints -= damage;
                 }
-                
+
                 if (opponent.HipPoints <= 0)
                 {
                     opponent.HipPoints = 0;
                     response.Message = $"{opponent.Name} has been defeated!";
-                }   
+                }
+
+                await _context.SaveChangesAsync();
+
+                response.Data = new AttackResultDto
+                {
+                    Attacker = attacker.Name,
+                    Opponent = opponent.Name,
+                    AttackerHP = attacker.HipPoints,
+                    OpponentHP = opponent.HipPoints,
+                    Damage = damage
+                };
+
+            }
+            catch (Exception exception)
+            {
+                response.Success = false;
+                response.Message = exception.Message;
+            }
+
+            return response;
+        }
+        
+        public async Task<ServiceResponse<AttackResultDto>> SkillAttack(SkillAttackDto request)
+        {
+            var response = new ServiceResponse<AttackResultDto>();
+
+            try
+            {
+                var attacker = await _context.Characters
+                    .Include(character => character.Skills)
+                    .FirstOrDefaultAsync(character => character.Id == request.AttackerId);
+
+                var opponent = await _context.Characters
+                    .FirstOrDefaultAsync(character => character.Id == request.OpponentId);
+
+                if (attacker == null || opponent == null || attacker.Skills == null)
+                {
+                    throw new Exception("Attacker/oppenent or skill not found.");
+                }
+
+                var skill = attacker.Skills.FirstOrDefault(skill => skill.Id == request.SkillId);
+
+                if (skill == null)
+                {
+                    response.Success = false;
+                    response.Message = $"{attacker.Name} doesn't know that skill!";
+                    return response;
+                }
+
+                int damage = skill.Damage + (new Random().Next(attacker.Inteligence));
+                damage -= new Random().Next(opponent.Defence);
+
+                if (damage > 0)
+                {
+                    opponent.HipPoints -= damage;
+                }
+
+                if (opponent.HipPoints <= 0)
+                {
+                    opponent.HipPoints = 0;
+                    response.Message = $"{opponent.Name} has been defeated!";
+                }
 
                 await _context.SaveChangesAsync();
 
