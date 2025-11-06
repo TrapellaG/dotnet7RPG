@@ -9,8 +9,10 @@ namespace dotNetRPG.Services.FightService
     public class FightService : IFightService
     {
         private readonly DataContext _context;
-        public FightService(DataContext context)
+        private readonly IMapper _mapper;
+        public FightService(DataContext context, IMapper mapper)
         {
+            _mapper = mapper;
             _context = context;
         }
 
@@ -228,6 +230,29 @@ namespace dotNetRPG.Services.FightService
             }
 
             return response;
+        }
+
+        public async Task<ServiceResponse<List<HighscoreDto>>> GetHighscore()
+        {
+            var characters = await _context.Characters
+                .Where(character => character.Fights > 0)
+                .OrderByDescending(character => character.Victories)
+                .ThenBy(character => character.Defeats)
+                .Select(character => new HighscoreDto
+                {
+                    Name = character.Name,
+                    Fights = character.Fights,
+                    Victories = character.Victories,
+                    Defeats = character.Defeats
+                })
+                .ToListAsync();
+
+            var response = new ServiceResponse<List<HighscoreDto>>
+            {
+                Data = characters.Select(character => _mapper.Map<HighscoreDto>(character)).ToList()
+            };
+
+           return response;
         }
     }
 }
